@@ -53,35 +53,29 @@ public class AxelFile extends File {
 	}
 
 	/**
-	 * @return the bytes_done
-	 * 获取当前已经下载的大小（字节数）
+	 * @return the bytes_done 获取当前已经下载的大小（字节数）
 	 */
 	public long getBytes_done() {
 		return bytes_done;
 	}
 
 	/**
-	 * @return the connections
-	 * 获取该文件下载使用的连接数
+	 * @return the connections 获取该文件下载使用的连接数
 	 */
 	public int getConnections() {
 		return connections;
 	}
 
 	/**
-	 * @return the connections_bytes_done
-	 * 获取各个连接分别已经下载完的大小
+	 * @return the connections_bytes_done 获取各个连接分别已经下载完的大小
 	 */
 	public long[] getConnections_bytes_done() {
 		return connections_bytes_done;
 	}
 
 	/**
-	 * @return the fileInfo
-	 * fileINfo的值：
-	 * 0：文件不存在，为新建文件
-	 * 1：文件存在并且已经下载完了
-	 * 2：文件存在，但是没有下载完，可以继续下载
+	 * @return the fileInfo fileINfo的值： 0：文件不存在，为新建文件 1：文件存在并且已经下载完了
+	 *         2：文件存在，但是没有下载完，可以继续下载
 	 */
 	public int getFileInfo() {
 		return fileInfo;
@@ -126,39 +120,40 @@ public class AxelFile extends File {
 	}
 
 	private void init() {
-		if (!exists()) {
-			fileInfo = 0;
-			return;
-		}
 
 		File file = new File(this.getName() + ".st");
-		if (!file.exists()) {
-			fileInfo = 1;
-			return;
-		}
+		if (!exists()) {
+			fileInfo = 0;
+		} else {
+			if (!file.exists()) {
+				fileInfo = 1;
+			} else {
+				fileInfo = 2;
+				try {
+					DataInputStream disDataInputStream = new DataInputStream(
+							new FileInputStream(file));
 
-		fileInfo = 2;
-		try {
-			DataInputStream disDataInputStream = new DataInputStream(
-					new FileInputStream(file));
+					connections = disDataInputStream.readInt();
 
-			connections = disDataInputStream.readInt();
+					bytes_done = disDataInputStream.readLong();
 
-			bytes_done = disDataInputStream.readLong();
-
-			connections_bytes_done = new long[connections];
-			for (int i = 0; i < connections; i++) {
-				connections_bytes_done[i] = disDataInputStream.readLong();
+					connections_bytes_done = new long[connections];
+					for (int i = 0; i < connections; i++) {
+						connections_bytes_done[i] = disDataInputStream
+								.readLong();
+					}
+					disDataInputStream.close();
+				} catch (FileNotFoundException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
 			}
-			disDataInputStream.close();
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+
+			readURLs();
 		}
-		readURLs();
 	}
 
 	private void readURLs() {
