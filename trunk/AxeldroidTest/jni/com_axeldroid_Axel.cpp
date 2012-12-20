@@ -117,11 +117,9 @@ LOGV("file size:%lld", axel->size);
 JNIEXPORT void JNICALL Java_com_axeldroid_Axel_refreshProgress(JNIEnv *env, jobject obj,jlong paxel) {
 	//LOGV("refresh progress req,axel addr:%lld",(void*)paxel);find_my_axel(env,obj)
 		/* Calculate current average speed and finish_time		*/
-	axel_t* axel=(axel_t*)paxel;
-	axel->bytes_per_second = (int) ( (double) ( axel->bytes_done - axel->start_byte ) / ( gettime() - axel->start_time ) );
-	axel->finish_time = (int) ( axel->start_time + (double) ( axel->size - axel->start_byte ) / axel->bytes_per_second );
+//	axel_t* axel=(axel_t*)paxel;
 
-	notifyProgress(axel);
+	notifyProgress((void*)paxel);
 //LOGV("refresh progress not found");
 }
 
@@ -146,9 +144,12 @@ void notifyProgress(void* ax) {
 	if(!ax)return;
 axel_t* axel = (axel_t*) ax;
 JNIEnv *env = axel->env;
+double now=gettime();
+axel->bytes_per_second = (int) ( (double) ( axel->bytes_done - axel->start_byte ) / ( now - axel->start_time ) );
+axel->finish_time = (int) ( axel->start_time + (double) ( axel->size - axel->start_byte ) / axel->bytes_per_second );
 env->SetIntField(axel->jobj, axel->bytes_per_second_id, axel->bytes_per_second);
 env->SetIntField(axel->jobj, axel->left_seconds_id,
-	axel->finish_time - gettime());
+	axel->finish_time - now);
 env->SetLongField(axel->jobj, axel->bytes_done_id, axel->bytes_done);
 //	env->CallVoidMethod(axel->jobj, axel->void_method_progress_id);
 }
