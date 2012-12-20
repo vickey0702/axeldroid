@@ -13,6 +13,10 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.util.TimerTask;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+
+import android.os.AsyncTask;
 
 /**
  * @author ganyouf
@@ -24,7 +28,9 @@ import java.util.TimerTask;
  */
 public class Axel {
 
-	public static final java.util.Timer timer = new java.util.Timer(true);
+	private static final java.util.Timer timer = new java.util.Timer(true);
+
+	private static final Executor myExecutor = Executors.newCachedThreadPool();
 
 	// 已下载字节数
 	protected long bytes_done;
@@ -106,36 +112,29 @@ public class Axel {
 		if (axelFile.getUrlStrings() == null) {
 			throw new Exception("url is null,can not start download");
 		}
-
-		task = new TimerTask() {
-			public void run() {
-				if (pMyAxel != 0) {
-					refreshProgress(pMyAxel);
-					onProgress();
-				}
-			}
-		};
-		timer.schedule(task, 0, progressDelay);
-		newTask(connections, axelFile.getAbsolutePath(),
-				axelFile.getUrlStrings());
+		new DownloadFilesTask().executeOnExecutor(myExecutor, 0);
 	}
+
+	// private final void start() {
+	//
+	// }
 
 	private native void newTask(int conns, String fnString, String[] urls);
 
 	private native void refreshProgress(long pAxel);
 
 	// 进度通知，
-	public void onProgress() {
+	protected void onProgress() {
 		// System.out.println("progress:" + bytes_done);
 	}
 
 	// 即将完成
-	public void onFinish() {
+	protected void onFinish() {
 		task.cancel();
 	}
 
 	// 即将开始下载
-	public void onStart() {
+	protected void onStart() {
 
 	}
 
@@ -144,5 +143,39 @@ public class Axel {
 	// 停止下载并保存状态
 	public final void stop() {
 		axel_stop(pMyAxel);
+	}
+
+	private class DownloadFilesTask extends
+			AsyncTask<Integer, Integer, Integer> {
+
+		@Override
+		protected Integer doInBackground(Integer... params) {
+			// TODO Auto-generated method stub
+
+			task = new TimerTask() {
+				public void run() {
+					if (pMyAxel != 0) {
+						refreshProgress(pMyAxel);
+						publishProgress(0);
+					}
+				}
+			};
+			timer.schedule(task, 0, progressDelay);
+			newTask(connections, axelFile.getAbsolutePath(),
+					axelFile.getUrlStrings());
+			return null;
+		}
+
+		/*
+		 * (non-Javadoc)
+		 * 
+		 * @see android.os.AsyncTask#onProgressUpdate(Progress[])
+		 */
+		@Override
+		protected void onProgressUpdate(Integer... values) {
+			// TODO Auto-generated method stub
+			onProgress();
+		}
+
 	}
 }
