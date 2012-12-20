@@ -82,10 +82,15 @@ public class Axel {
 	public final void axel_new(String saveFileNameString, String[] urls) {
 		this.axelFile = new AxelFile(saveFileNameString);
 		this.axelFile.setUrlStrings(urls);
+		writeURLs();
 	}
 
 	public final void axel_new(AxelFile axelFile) {
 		this.axelFile = axelFile;
+		writeURLs();
+	}
+
+	private void writeURLs() {
 
 		try {
 			// File file=new File(axelFile
