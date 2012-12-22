@@ -70,7 +70,7 @@ argvs[2] = fn;
 }
 
 //char *argvs[] = {"hello", "-o", "/mnt/sdcard/CZPAD/aa.war", "-n", "2", "-a", "http://localhost/CZHDP.war"};
-gmain(7, argvs, env, obj, setAxelJniInfo);
+gmain(argc, argvs, env, obj, setAxelJniInfo);
 
 for (i = 6; i < argc; i++) {
 delete[] argvs[i];
