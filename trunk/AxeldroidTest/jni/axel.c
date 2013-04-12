@@ -48,6 +48,7 @@ axel_t *axel_new( conf_t *conf, int count, void *url )
 	
 	axel = malloc( sizeof( axel_t ) );
 	memset( axel, 0, sizeof( axel_t ) );
+	axel->has_init=1;
 	*axel->conf = *conf;
 	axel->conn = malloc( sizeof( conn_t ) * axel->conf->num_connections );
 	memset( axel->conn, 0, sizeof( conn_t ) * axel->conf->num_connections );
@@ -93,6 +94,7 @@ axel_t *axel_new( conf_t *conf, int count, void *url )
 	if( !conn_set( &axel->conn[0], axel->url->text ) )
 	{
 		axel_message( axel, _("Could not parse URL.\n") );
+		axel->errcode=-1;
 		axel->ready = -1;
 		return( axel );
 	}
@@ -110,6 +112,7 @@ axel_t *axel_new( conf_t *conf, int count, void *url )
 	if( !conn_init( &axel->conn[0] ) )
 	{
 		axel_message( axel, axel->conn[0].message );
+		axel->errcode=-3;
 		axel->ready = -1;
 		return( axel );
 	}
@@ -180,6 +183,7 @@ int axel_open( axel_t *axel )
 		if( ( axel->outfd = open( axel->filename, O_WRONLY, 0666 ) ) == -1 )
 		{
 			axel_message( axel, _("Error opening local file") );
+		axel->errcode=-2;
 			return( 0 );
 		}
 	}
@@ -192,6 +196,7 @@ int axel_open( axel_t *axel )
 		if( ( axel->outfd = open( axel->filename, O_CREAT | O_WRONLY, 0666 ) ) == -1 )
 		{
 			axel_message( axel, _("Error opening local file") );
+		axel->errcode=-2;
 			return( 0 );
 		}
 		

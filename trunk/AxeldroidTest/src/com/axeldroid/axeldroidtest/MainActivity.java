@@ -8,6 +8,7 @@ import android.view.Menu;
 
 public class MainActivity extends Activity {
 
+	//Axel axel;
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -34,9 +35,9 @@ public class MainActivity extends Activity {
 			 * @see com.dragon.net.Axel#onFinish()
 			 */
 			@Override
-			protected void onFinish() {
+			protected void onFinish(int message) {
 				// TODO Auto-generated method stub
-				super.onFinish();
+				super.onFinish(message);
 
 				Log.v("axel", "onfinished,size:" + bytes_done
 						+ ",cost_seconds:" + cost_seconds);
@@ -54,10 +55,13 @@ public class MainActivity extends Activity {
 			}
 
 		};
-		axel.axel_new("/mnt/sdcard/CZPAD/egpq.mov", new String[] {
-				"http://192.168.48.122/gyf2.mov",
-				"http://192.168.48.122/gyf3.mov" });
-		axel.connections = 4;
+		axel.axel_new("/mnt/sdcard/aa.jpg",
+				new String[] { "http://avatar.csdn.net/A/1/4/1_stefzeus.jpg" });
+		// axel.axel_new(
+		// "/mnt/sdcard/CZPAD/a.exe",
+		// new String[] {
+		// "http://hezuo.down.xunlei.com/xunlei_hezuo_2/thunder(12564).exe" });
+		axel.connections = 1;
 
 		try {
 			axel.axel_start();

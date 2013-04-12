@@ -108,15 +108,13 @@ typedef struct
 
 	//dragon add members for my own context
 	int run;
-	JNIEnv *env;
-	jobject jobj;
+	int *errcode;
+	int has_init;
 	jmethodID void_method_progress_id;
 	jfieldID bytes_done_id;
 	jfieldID file_size_id;
 	jfieldID bytes_per_second_id;
 	jfieldID left_seconds_id;
-	void (*progress)(void*);
-	void (*notifyFinish)(void*);
 } axel_t;
 
 axel_t *axel_new( conf_t *conf, int count, void *url );
