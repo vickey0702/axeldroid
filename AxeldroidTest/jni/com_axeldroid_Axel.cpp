@@ -13,11 +13,13 @@
 #define LOGD(...)  __android_log_print(ANDROID_LOG_DEBUG,LOG_TAG,__VA_ARGS__)
 #define LOGV(...)  __android_log_print(ANDROID_LOG_VERBOSE,LOG_TAG,__VA_ARGS__)
 
+#define LOGV(...)
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-int gmain(int argc, char *argv[], JNIEnv *env, jobject obj,
-		void (*setAxelJniInfo)(axel_t*, JNIEnv*, jobject));
+axel_t* gmain(int argc, char *argv[], JNIEnv *env, jobject obj,
+void (*setAxelJniInfo)(axel_t* axel, JNIEnv *env, jobject obj));
 #ifdef __cplusplus
 }
 #endif
@@ -36,7 +38,7 @@ axel_list* axels = NULL;
 void setAxelJniInfo(axel_t* axel, JNIEnv *env, jobject obj);
 
 //通知下载完成
-void notifyFinish(void*);
+void notifyFinish(axel_t* axel,JNIEnv *env, jobject obj);
 
 //axel_t* find_my_axel(JNIEnv *,jobject obj);
 
@@ -57,7 +59,7 @@ argvs[2] = fn;
 	char conn[10] = { 0 };
 	sprintf(conn, "%d", (int) connections);
 	argvs[4] = conn;
-	argvs[5] = "-q";
+	argvs[5] = "-v";
 	int i = 6;
 	for (; i < argc; i++) {
 		jstring str = (jstring) env->GetObjectArrayElement(urls, i - 6);
@@ -70,7 +72,19 @@ argvs[2] = fn;
 }
 
 //char *argvs[] = {"hello", "-o", "/mnt/sdcard/CZPAD/aa.war", "-n", "2", "-a", "http://localhost/CZHDP.war"};
-gmain(argc, argvs, env, obj, setAxelJniInfo);
+
+jobject jobj=env->NewGlobalRef(obj);
+
+axel_t* axel=gmain(argc, argvs,env,jobj,setAxelJniInfo);
+
+if(axel==NULL){
+	notifyFinish(axel,env,jobj);
+}
+else{
+	notifyFinish(axel,env,jobj);
+	axel_close(axel);
+}
+env->DeleteGlobalRef(jobj);
 
 for (i = 6; i < argc; i++) {
 delete[] argvs[i];
@@ -81,9 +95,10 @@ delete[] argvs;
 
 JNIEXPORT void JNICALL Java_com_axeldroid_Axel_axel_stop(JNIEnv *env, jobject obj,jlong paxel) {
 	axel_t* axel=(axel_t*)paxel;
-	notifyFinish(axel);
+	notifyFinish(axel,env,obj);
 	axel->run=0;
 }
+
 
 void setAxelJniInfo(axel_t* axel, JNIEnv *env, jobject obj) {
 //
@@ -95,17 +110,17 @@ axel->left_seconds_id = env->GetFieldID(cls, "left_seconds", "I");
 axel->bytes_done_id = env->GetFieldID(cls, "bytes_done", "J");
 axel->file_size_id = env->GetFieldID(cls, "file_size", "J");
 env->SetLongField(obj, axel->file_size_id, axel->size);
-axel->env = env;
-axel->jobj = obj;
-axel->progress = notifyProgress;
-axel->notifyFinish = notifyFinish;
+//axel->env = env;
+//axel->jobj = obj;
+//axel->progress = notifyProgress;
+//axel->notifyFinish = notifyFinish;
 axel->run=1;
-
+axel->has_init=2;
 //LOGV("axel addr:%lld", (jlong)axel);
 //LOGV("axel addr:%lld", (void*)axel);
 env->SetLongField(obj, env->GetFieldID(cls, "pMyAxel", "J"),(jlong)axel);
 //LOGV("axel addr:%lld", (jlong)axel);
-notifyProgress(axel);
+//notifyProgress(axel);
 env->CallVoidMethod(obj, env->GetMethodID(cls, "onStart", "()V"));
 
 //addAxelObj(axel);
@@ -117,9 +132,15 @@ LOGV("file size:%lld", axel->size);
 JNIEXPORT void JNICALL Java_com_axeldroid_Axel_refreshProgress(JNIEnv *env, jobject obj,jlong paxel) {
 	//LOGV("refresh progress req,axel addr:%lld",(void*)paxel);find_my_axel(env,obj)
 		/* Calculate current average speed and finish_time		*/
-//	axel_t* axel=(axel_t*)paxel;
-
-	notifyProgress((void*)paxel);
+	axel_t* axel=(axel_t*)paxel;
+double now=gettime();
+axel->bytes_per_second = (int) ( (double) ( axel->bytes_done - axel->start_byte ) / ( now - axel->start_time ) );
+axel->finish_time = (int) ( axel->start_time + (double) ( axel->size - axel->start_byte ) / axel->bytes_per_second );
+env->SetIntField(obj, axel->bytes_per_second_id, axel->bytes_per_second);
+env->SetIntField(obj, axel->left_seconds_id,
+	axel->finish_time - now);
+env->SetLongField(obj, axel->bytes_done_id, axel->bytes_done);
+	//notifyProgress((void*)paxel);
 //LOGV("refresh progress not found");
 }
 
@@ -140,6 +161,8 @@ LOGV("axel find,obj addr:%lld,axels addr:%lld",obj,p);
 return NULL;
 }
 */
+
+/*
 void notifyProgress(void* ax) {
 	if(!ax)return;
 axel_t* axel = (axel_t*) ax;
@@ -153,16 +176,41 @@ env->SetIntField(axel->jobj, axel->left_seconds_id,
 env->SetLongField(axel->jobj, axel->bytes_done_id, axel->bytes_done);
 //	env->CallVoidMethod(axel->jobj, axel->void_method_progress_id);
 }
+*/
+void notifyFinish(axel_t* axel,JNIEnv *env, jobject obj) {
+LOGV("FINISH11");
+jclass cls = env->GetObjectClass(obj);
+LOGV("FINISH12");
+	if(axel!=NULL&&axel->has_init==2){
+//axel_t* axel = (axel_t*) ax;
 
-void notifyFinish(void* ax) {
-	if(!ax)return;
-LOGV("FINISH");
-axel_t* axel = (axel_t*) ax;
-notifyProgress(ax);
-jclass cls = axel->env->GetObjectClass(axel->jobj);
-axel->env->SetIntField(axel->jobj, axel->env->GetFieldID(cls, "cost_seconds", "I"),(int)(gettime()-axel->start_time));
-axel->env->CallVoidMethod(axel->jobj,
-	axel->env->GetMethodID(cls, "onFinish", "()V"));
+LOGV("FINISH1");
+//notifyProgress(ax);
+double now=gettime();
+
+axel->bytes_per_second = (int) ( (double) ( axel->bytes_done - axel->start_byte ) / ( now - axel->start_time ) );
+axel->finish_time = (int) ( axel->start_time + (double) ( axel->size - axel->start_byte ) / axel->bytes_per_second );
+env->SetIntField(obj, axel->bytes_per_second_id, axel->bytes_per_second);
+env->SetIntField(obj, axel->left_seconds_id,
+	axel->finish_time - now);
+env->SetLongField(obj, axel->bytes_done_id, axel->bytes_done);
+
+
+env->SetIntField(obj, env->GetFieldID(cls, "cost_seconds", "I"),(int)(gettime()-axel->start_time));
+
+env->CallVoidMethod(obj,
+	env->GetMethodID(cls, "onFinish", "(I)V"),axel->errcode);
+}
+else if(axel!=NULL){
+LOGV("FINISH2");
+	env->CallVoidMethod(obj,
+	env->GetMethodID(cls, "onFinish", "(I)V"),axel->errcode);
+}
+else{
+LOGV("FINISH3");
+	env->CallVoidMethod(obj,
+	env->GetMethodID(cls, "onFinish", "(I)V"),-100);
+}
 //removeAxelObj(axel);
 }
 

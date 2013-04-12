@@ -4,5 +4,7 @@
     <string name="app_name">AxeldroidTest</string>
     <string name="hello_world">Hello world!</string>
     <string name="menu_settings">Settings</string>
+    <string name="downloading">正在下载</string>
+    <string name="downloaded">已下载</string>
 
 </resources>

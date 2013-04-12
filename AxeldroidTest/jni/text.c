@@ -46,8 +46,8 @@ static struct option axel_options[] = {
 /* For returning string values from functions				*/
 static char string[MAX_STRING];
 
-int gmain(int argc, char *argv[], JNIEnv *env, jobject obj,
-		void (*setAxelJniInfo)(axel_t*, JNIEnv*, jobject)) {
+axel_t* gmain(int argc, char *argv[], JNIEnv *env, jobject obj,
+void (*setAxelJniInfo)(axel_t* axel, JNIEnv *env, jobject obj)) {
 	char fn[MAX_STRING] = "";
 	int do_search = 0;
 	search_t *search;
@@ -63,7 +63,7 @@ int gmain(int argc, char *argv[], JNIEnv *env, jobject obj,
 #endif
 
 	if (!conf_init(conf)) {
-		return (1);
+		return (NULL);
 	}
 
 	opterr = 0;
@@ -87,13 +87,13 @@ int gmain(int argc, char *argv[], JNIEnv *env, jobject obj,
 		case 's':
 			if (!sscanf(optarg, "%i", &conf->max_speed)) {
 //				print_help();
-				return (1);
+				return (NULL);
 			}
 			break;
 		case 'n':
 			if (!sscanf(optarg, "%i", &conf->num_connections)) {
 //				print_help();
-				return (1);
+				return (NULL);
 			}
 			break;
 		case 'o':
@@ -104,7 +104,7 @@ int gmain(int argc, char *argv[], JNIEnv *env, jobject obj,
 			if (optarg != NULL )
 				if (!sscanf(optarg, "%i", &conf->search_top)) {
 //					print_help();
-					return (1);
+					return (NULL);
 				}
 			break;
 		case 'a':
@@ -115,7 +115,7 @@ int gmain(int argc, char *argv[], JNIEnv *env, jobject obj,
 			break;
 		case 'h':
 //			print_help();
-			return (0);
+			return (NULL);
 		case 'v':
 			if (j == -1)
 				j = 1;
@@ -124,18 +124,18 @@ int gmain(int argc, char *argv[], JNIEnv *env, jobject obj,
 			break;
 		case 'V':
 //			print_version();
-			return (0);
+			return (NULL);
 		case 'q':
 			close(1);
 			conf->verbose = -1;
 			if (open("/dev/null", O_WRONLY) != 1) {
 				fprintf(stderr, _("Can't redirect stdout to /dev/null.\n"));
-				return (1);
+				return (NULL);
 			}
 			break;
 		default:
 //			print_help();
-			return (1);
+			return (NULL);
 		}
 	}
 	conf->add_header_count = cur_head;
@@ -144,19 +144,19 @@ int gmain(int argc, char *argv[], JNIEnv *env, jobject obj,
 
 	if (argc - optind == 0) {
 //		print_help();
-		return (1);
+		return (NULL);
 	} else if (strcmp(argv[optind], "-") == 0) {
 		s = malloc(MAX_STRING);
 		if (scanf("%1024[^\n]s", s) != 1) {
 			fprintf(stderr, _("Error when trying to read URL (Too long?).\n"));
-			return (1);
+			return (NULL);
 		}
 	} else {
 		s = argv[optind];
 		if (strlen(s) > MAX_STRING) {
 			fprintf(stderr, _("Can't handle URLs of length over %d\n" ),
 					MAX_STRING);
-			return (1);
+			return (NULL);
 		}
 	}
 
@@ -170,7 +170,7 @@ int gmain(int argc, char *argv[], JNIEnv *env, jobject obj,
 		i = search_makelist(search, s);
 		if (i < 0) {
 			fprintf(stderr, _("File not found\n" ));
-			return (1);
+			return (NULL);
 		}
 		if (conf->verbose)
 			printf(_("Testing speeds, this can take a while...\n"));
@@ -188,15 +188,15 @@ int gmain(int argc, char *argv[], JNIEnv *env, jobject obj,
 		free(search);
 		if (axel->ready == -1) {
 			print_messages(axel);
-			axel_close(axel);
-			return (1);
+			//axel_close(axel);
+			return (axel);
 		}
 	} else if (argc - optind == 1) {
 		axel = axel_new(conf, 0, s);
 		if (axel->ready == -1) {
 			print_messages(axel);
-			axel_close(axel);
-			return (1);
+			//axel_close(axel);
+			return (axel);
 		}
 	} else {
 		search = malloc(sizeof(search_t) * (argc - optind));
@@ -207,8 +207,8 @@ int gmain(int argc, char *argv[], JNIEnv *env, jobject obj,
 		free(search);
 		if (axel->ready == -1) {
 			print_messages(axel);
-			axel_close(axel);
-			return (1);
+			//axel_close(axel);
+			return (axel);
 		}
 	}
 	print_messages(axel);
@@ -226,7 +226,8 @@ int gmain(int argc, char *argv[], JNIEnv *env, jobject obj,
 
 				if (fnlen + 1 + axelfnlen + 1 > MAX_STRING) {
 					fprintf(stderr, _("Filename too long!\n"));
-					return (1);
+					axel->errcode=-4;
+					return (axel);
 				}
 
 				fn[fnlen] = '/';
@@ -238,7 +239,8 @@ int gmain(int argc, char *argv[], JNIEnv *env, jobject obj,
 		if (access(fn, F_OK) == 0)
 			if (access(string, F_OK) != 0) {
 				fprintf(stderr, _("No state file, cannot resume!\n"));
-				return (1);
+					axel->errcode=-5;
+				return (axel);
 			}
 		if (access(string, F_OK) == 0)
 			if (access(fn, F_OK) != 0) {
@@ -269,7 +271,7 @@ int gmain(int argc, char *argv[], JNIEnv *env, jobject obj,
 
 	if (!axel_open(axel)) {
 		print_messages(axel);
-		return (1);
+		return (axel);
 	}
 	print_messages(axel);
 	axel_start(axel);
@@ -292,6 +294,7 @@ int gmain(int argc, char *argv[], JNIEnv *env, jobject obj,
 
 	//init myaxel
 	setAxelJniInfo(axel, env, obj);
+	axel->run=1;
 	while (!axel->ready && axel->run) {
 //		long long int prev, done;
 //
@@ -299,13 +302,11 @@ int gmain(int argc, char *argv[], JNIEnv *env, jobject obj,
 		axel_do(axel);
 		//axel->progress(axel);
 	}
-	axel->notifyFinish(axel);
-
 	i = axel->ready ? 0 : 2;
 
-	axel_close(axel);
+	//axel_close(axel);
 
-	return (i);
+	return (axel);
 }
 
 /* SIGINT/SIGTERM handler						*/
